@@ -1,21 +1,42 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Expense } from '../types/index.ts';
 
 interface ExpenseFormProps {
-  onSubmit: (expense: Omit<Expense, 'id'> | Expense) => void;
+  onSubmit: (expense: Omit<Expense, 'id'> | Expense) => void | Promise<void>;
   onCancel: () => void;
   initialData?: Expense | null;
+  isSubmitting?: boolean;
+  serverError?: string | null;
 }
 
-type FormData = {
+interface FormData {
   description: string;
-  amount: number;
+  amount: number | undefined;
   category: string;
   date: string;
-};
+}
 
-const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, initialData }) => {
+const CATEGORIES = [
+  'Alimentation',
+  'Transport',
+  'Logement',
+  'Divertissement',
+  'Services publics',
+  'Sante',
+  'Education',
+  'Autres',
+];
+
+const ExpenseForm: React.FC<ExpenseFormProps> = ({
+  onSubmit,
+  onCancel,
+  initialData,
+  isSubmitting = false,
+  serverError = null,
+}) => {
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   const {
     register,
     handleSubmit,
@@ -25,9 +46,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, initialDa
     defaultValues: {
       description: '',
       amount: undefined,
-      category: 'Food',
-      date: new Date().toISOString().split('T')[0],
-    }
+      category: CATEGORIES[0],
+      date: today,
+    },
   });
 
   useEffect(() => {
@@ -42,73 +63,116 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSubmit, onCancel, initialDa
       reset({
         description: '',
         amount: undefined,
-        category: 'Food',
-        date: new Date().toISOString().split('T')[0],
+        category: CATEGORIES[0],
+        date: today,
       });
     }
-  }, [initialData, reset]);
-  
-  const handleFormSubmit = (data: FormData) => {
-    if (initialData) {
-        onSubmit({ ...initialData, ...data });
-    } else {
-        onSubmit(data);
-    }
+  }, [initialData, reset, today]);
+
+  const handleFormSubmit = async (data: FormData) => {
+    const payload = initialData ? { ...initialData, ...data } : data;
+    await onSubmit(payload);
   };
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-        <input 
-          type="text" 
-          id="description" 
-          {...register('description', { required: 'Description is required.' })}
-          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-        {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
+      <div className="space-y-1">
+        <label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          Description
+        </label>
+        <input
+          type="text"
+          id="description"
+          {...register('description', { required: 'La description est obligatoire.' })}
+          className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-50"
+          placeholder="Ex: Courses, essence, etc."
+        />
+        {errors.description && (
+          <p className="text-xs font-medium text-red-600 dark:text-red-400">{errors.description.message}</p>
+        )}
       </div>
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-        <input 
-          type="number" 
-          id="amount" 
-          step="0.01"
-          {...register('amount', {
-            required: 'Amount is required.',
-            valueAsNumber: true,
-            min: { value: 0.01, message: 'Please enter a positive amount.' }
-          })}
-          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount.message}</p>}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <label htmlFor="amount" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Montant
+          </label>
+          <input
+            type="number"
+            id="amount"
+            step="0.01"
+            min="0"
+            {...register('amount', {
+              required: 'Le montant est obligatoire.',
+              valueAsNumber: true,
+              min: { value: 0.01, message: 'Entrez un montant superieur a 0.' },
+            })}
+            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-50"
+            placeholder="0.00"
+          />
+          {errors.amount && (
+            <p className="text-xs font-medium text-red-600 dark:text-red-400">{errors.amount.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="date" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Date
+          </label>
+          <input
+            type="date"
+            id="date"
+            {...register('date', { required: 'La date est obligatoire.' })}
+            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-50"
+            max={today}
+          />
+          {errors.date && (
+            <p className="text-xs font-medium text-red-600 dark:text-red-400">{errors.date.message}</p>
+          )}
+        </div>
       </div>
-      <div>
-        <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-        <select 
-          id="category" 
+
+      <div className="space-y-1">
+        <label htmlFor="category" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          Categorie
+        </label>
+        <select
+          id="category"
           {...register('category', { required: true })}
-          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-            <option>Food</option>
-            <option>Transport</option>
-            <option>Entertainment</option>
-            <option>Utilities</option>
-            <option>Miscellaneous</option>
+          className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-50"
+        >
+          {CATEGORIES.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
         </select>
       </div>
-      <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-        <input 
-          type="date" 
-          id="date" 
-          {...register('date', { required: 'Date is required.' })}
-          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date.message}</p>}
-      </div>
-      <div className="flex justify-end space-x-2 pt-4">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-gray-600 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
-        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700">{initialData ? 'Update' : 'Save'}</button>
+
+      {serverError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200">
+          {serverError}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          disabled={isSubmitting}
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-gray-900"
+        >
+          {isSubmitting ? 'Enregistrement...' : initialData ? 'Mettre a jour' : 'Enregistrer'}
+        </button>
       </div>
     </form>
   );
 };
 
 export default ExpenseForm;
+

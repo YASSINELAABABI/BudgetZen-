@@ -9,27 +9,33 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" aria-modal="true" role="dialog">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 transform transition-all">
-        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-8 backdrop-blur"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl transition dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm p-1.5"
-            aria-label="Close modal"
+            className="rounded-full p-1.5 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-400 dark:text-gray-300 dark:hover:bg-gray-800"
+            aria-label="Fermer"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-4 md:p-5">
-          {children}
-        </div>
+        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );
 };
 
 export default Modal;
+

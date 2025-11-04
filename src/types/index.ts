@@ -7,7 +7,7 @@ export interface User {
 }
 
 export interface Expense {
-  id: string;
+  id: number;
   description: string;
   amount: number;
   category: string;
@@ -15,10 +15,13 @@ export interface Expense {
 }
 
 export interface Charge {
-  id: string;
+  id: number;
   description: string;
   amount: number;
   category: string;
   dueDate: string;
   isPaid: boolean;
 }
+
+export type ExpensePayload = Omit<Expense, 'id'>;
+export type ChargePayload = Omit<Charge, 'id'>;
